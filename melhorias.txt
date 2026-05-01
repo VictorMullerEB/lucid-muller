@@ -1,0 +1,1 @@
+Faça com que a seta nunca passe por dentro do elemento que está sendo ligada, se o elemento se mover e o sistema perceber que o melhor caminho para a seta é outro, ela muda sozinha para outra conexão com melhor visualização.

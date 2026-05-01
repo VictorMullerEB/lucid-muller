@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LucidMuller - Editor de Diagramas UML</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- Menu Bar -->
+  <div id="menubar">
+    <div class="menu-left">
+      <span class="logo">⬡ LucidMuller</span>
+      <div class="menu-group">
+        <button class="menu-btn" onclick="newDiagram()">Novo</button>
+        <button class="menu-btn" onclick="saveDiagram()">Salvar</button>
+        <button class="menu-btn" onclick="loadDiagramDialog()">Abrir</button>
+        <button class="menu-btn" onclick="exportJSON()">Exportar JSON</button>
+        <button class="menu-btn" onclick="importJSON()">Importar JSON</button>
+        <button class="menu-btn" onclick="exportPDF()">Exportar PDF</button>
+        <button class="menu-btn" onclick="exportPNG()">Exportar PNG</button>
+      </div>
+    </div>
+    <div class="menu-center">
+      <span id="diagram-name-display" ondblclick="renameDiagram()">Sem título</span>
+    </div>
+    <div class="menu-right">
+      <button class="menu-btn" onclick="undo()">↩ Desfazer</button>
+      <button class="menu-btn" onclick="redo()">↪ Refazer</button>
+      <button class="menu-btn" onclick="toggleGrid()">Grade</button>
+      <button class="menu-btn" onclick="fitView()">Ajustar</button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div class="tool-section">
+      <span class="tool-label">Ferramentas</span>
+      <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="Selecionar (V)">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 2l12 8-6 2-3 6z" fill="currentColor"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-pan" onclick="setTool('pan')" title="Mover Canvas (H)">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 2v3M10 15v3M2 10h3M15 10h3M5.5 5.5l2 2M12.5 12.5l2 2M5.5 14.5l2-2M12.5 7.5l2-2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-connect" onclick="setTool('connect')" title="Conectar (C)">
+        <svg width="20" height="20" viewBox="0 0 20 20"><line x1="4" y1="4" x2="16" y2="16" stroke="currentColor" stroke-width="2"/><circle cx="4" cy="4" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-text" onclick="setTool('text')" title="Texto (T)">
+        <svg width="20" height="20" viewBox="0 0 20 20"><text x="4" y="15" font-size="14" fill="currentColor" font-weight="bold">T</text></svg>
+      </button>
+    </div>
+
+    <div class="tool-section">
+      <span class="tool-label">Formas</span>
+      <button class="tool-btn" onclick="setShapeTool('rectangle')" title="Retângulo">▭</button>
+      <button class="tool-btn" onclick="setShapeTool('rounded')" title="Retângulo Arredondado">▢</button>
+      <button class="tool-btn" onclick="setShapeTool('diamond')" title="Diamante">◇</button>
+      <button class="tool-btn" onclick="setShapeTool('circle')" title="Círculo">○</button>
+      <button class="tool-btn" onclick="setShapeTool('actor')" title="Ator UML">👤</button>
+      <button class="tool-btn" onclick="setShapeTool('note')" title="Nota">📝</button>
+      <button class="tool-btn" onclick="setShapeTool('cylinder')" title="Banco de Dados">🗄️</button>
+      <button class="tool-btn" onclick="setShapeTool('package')" title="Pacote UML">📦</button>
+    </div>
+
+    <div class="tool-section">
+      <span class="tool-label">UML</span>
+      <button class="tool-btn small" onclick="insertTemplate('class')" title="Classe UML">Classe</button>
+      <button class="tool-btn small" onclick="insertTemplate('interface')" title="Interface UML">Interface</button>
+      <button class="tool-btn small" onclick="insertTemplate('usecase')" title="Caso de Uso">Use Case</button>
+      <button class="tool-btn small" onclick="insertTemplate('sequence')" title="Sequência">Sequência</button>
+      <button class="tool-btn small" onclick="insertTemplate('component')" title="Componente">Componente</button>
+      <button class="tool-btn small" onclick="insertTemplate('state')" title="Estado">Estado</button>
+    </div>
+
+    <div class="tool-section">
+      <span class="tool-label">Conectores</span>
+      <select id="connector-type" onchange="setConnectorType(this.value)">
+        <option value="arrow">→ Associação</option>
+        <option value="dashed-arrow">--→ Dependência</option>
+        <option value="hollow-arrow">→ Herança</option>
+        <option value="dashed-hollow">--▷ Realização</option>
+        <option value="diamond-line">◇— Agregação</option>
+        <option value="filled-diamond">◆— Composição</option>
+        <option value="line">— Linha</option>
+        <option value="dashed">- - Tracejada</option>
+      </select>
+    </div>
+
+    <div class="tool-section">
+      <span class="tool-label">Zoom</span>
+      <button class="tool-btn" onclick="zoom(-0.1)">−</button>
+      <span id="zoom-display">100%</span>
+      <button class="tool-btn" onclick="zoom(0.1)">+</button>
+    </div>
+  </div>
+
+  <div id="workspace">
+    <!-- Left Panel: Diagrams list -->
+    <div id="left-panel">
+      <div class="panel-header">
+        <span>Diagramas</span>
+        <button onclick="newDiagram()" title="Novo diagrama">+</button>
+      </div>
+      <div id="diagrams-list"></div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div id="canvas-container">
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+          </marker>
+          <marker id="hollow-arrow" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto">
+            <polygon points="0 0, 12 5, 0 10" fill="white" stroke="#555" stroke-width="1"/>
+          </marker>
+          <marker id="diamond-marker" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto">
+            <polygon points="0 4, 6 0, 12 4, 6 8" fill="white" stroke="#555" stroke-width="1"/>
+          </marker>
+          <marker id="filled-diamond-marker" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto">
+            <polygon points="0 4, 6 0, 12 4, 6 8" fill="#555"/>
+          </marker>
+          <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse" id="grid-pattern">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+          </pattern>
+          <filter id="shadow">
+            <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/>
+          </filter>
+        </defs>
+        <rect id="grid-bg" width="100%" height="100%" fill="url(#grid-pattern)"/>
+        <g id="connections-layer"></g>
+        <g id="elements-layer"></g>
+        <g id="temp-layer"></g>
+      </svg>
+    </div>
+
+    <!-- Right Panel: Properties -->
+    <div id="right-panel">
+      <div class="panel-header">Propriedades</div>
+      <div id="properties-panel">
+        <div class="no-selection">Selecione um elemento para editar suas propriedades</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu" class="hidden">
+    <div class="ctx-item" onclick="ctxBringFront()">Trazer para frente</div>
+    <div class="ctx-item" onclick="ctxSendBack()">Enviar para trás</div>
+    <div class="ctx-item" onclick="ctxBringForward()">Avançar</div>
+    <div class="ctx-item" onclick="ctxSendBackward()">Recuar</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" onclick="ctxDuplicate()">Duplicar</div>
+    <div class="ctx-item" onclick="ctxGroup()">Agrupar</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item danger" onclick="ctxDelete()">Excluir</div>
+  </div>
+
+  <!-- Dialogs -->
+  <div id="modal-overlay" class="hidden" onclick="closeModal()"></div>
+
+  <div id="modal-load" class="modal hidden">
+    <div class="modal-header">
+      <h3>Abrir Diagrama Salvo</h3>
+      <button onclick="closeModal()">×</button>
+    </div>
+    <div id="saved-diagrams-list" class="modal-body"></div>
+  </div>
+
+  <div id="modal-rename" class="modal hidden">
+    <div class="modal-header">
+      <h3>Renomear Diagrama</h3>
+      <button onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="rename-input" placeholder="Nome do diagrama"/>
+      <button class="primary-btn" onclick="confirmRename()">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- Hidden file input for import -->
+  <input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileImport(event)"/>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
